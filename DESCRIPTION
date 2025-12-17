@@ -1,0 +1,14 @@
+Package: hyperhmm
+Type: Package
+Title: Hypercubic (hidden) Markov model inference of accumulation processes
+Version: 0.1.0
+Author: Iain Johnston and Marcus Moen
+Maintainer: Iain Johnston <aeioun@gmail.com>
+Description: Inference of the transition probabilities on a hypercubic transition network given some observations of emitted signals from a (hidden) Markov model on that network. Visualisations of the inferred parameterised model and its summary dynamics are also performed. Article is: Marcus T Moen, Iain G Johnston, HyperHMM: efficient inference of evolutionary and progressive dynamics on hypercubic transition graphs, Bioinformatics, Volume 39, Issue 1, January 2023, btac803, https://doi.org/10.1093/bioinformatics/btac803
+License: CC BY 4.0
+Encoding: UTF-8
+LazyData: true
+LinkingTo: Rcpp, RcppArmadillo
+Imports: Rcpp, MASS, ggplot2, ggpubr, ggraph, ggrepel, igraph, stringr, gtools
+SystemRequirements: C++11
+RoxygenNote: 7.3.2
