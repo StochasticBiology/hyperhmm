@@ -1,5 +1,5 @@
 # hyperhmm
-Hypercubic (hidden) Markov models for accumulation modelling
+R library for hypercubic (hidden) Markov models in accumulation modelling
 
 <img width="3100" height="1378" alt="image" src="https://github.com/user-attachments/assets/7cea16b2-3167-4b31-a100-86911973a245" />
 
