@@ -299,17 +299,25 @@ void possible_transitions(vector<int>& n_partners, vector<int>& cumulative_partn
  Output:
  - An updated alpha matrix filled with all the values for alpha_t(i)
  */
-void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::vec A_col_idx, vector<string> O, vector<int> n_from, vector<int> c_from, vector<int> from, vector<int> cor_row, vector<int> n_states, vector<int> c_states, vector<int> states){
+void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::vec A_col_idx, vector<string> O, vector<int> n_from, vector<int> c_from, vector<int> from, vector<int> cor_row, vector<int> n_states, vector<int> c_states, vector<int> states, double *loglik){
   int T = O.size();
   double tmp = 0.;
   int start_state = 0;
 
+  *loglik = 0;
   //Add the initial state value
   //alpha(0,0) = 1.;
 
+  cout << "Computing probs for: ";
+  for(int i=0; i<T; i++){
+    cout << O[i] << " ";
+  }
+  cout << "\n";
+  
   // CHECK FOR BUGS, uninitialised start_state
   int t_start = 0;
   for(int i=0; i<T-1; i++){
+    cout << O[i] << " ";
     string time_i = O[i];
     // avoid question marks
     if(time_i.length() > T-3){
@@ -346,6 +354,8 @@ void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::
         int j2 = from[start_idx+j];
         alpha(t, state) += alpha(t-1,cor_row[start_idx+j])*A_val(j2);
       }
+      cout << "Reporting " << alpha(t,state) << " for " << state << " at " << t << "\n";
+      *loglik = log(alpha(t, state));
       /*
        if(alpha(t,state)==0){
        cout << "alpha(t,state): " << alpha(t,state) << endl;
@@ -526,11 +536,12 @@ void ksi_prob(arma::vec& ksi, arma::mat alpha, arma::mat beta, arma::vec A_val, 
  Output:
  - The output is the maximum likelihood estimate of the transition matrix A
  */
-void adapted_baum_welch(arma::vec& A_val, arma::vec A_row_ptr, arma::vec A_col_idx, vector<string> O, vector<int> n_O, int max_itr,int& itr, double eps, int L, bool single_A = false, bool double_A = false){
+void adapted_baum_welch(arma::vec& A_val, arma::vec A_row_ptr, arma::vec A_col_idx, vector<string> O, vector<int> n_O, int max_itr,int& itr, double eps, int L, double *loglik, bool single_A = false, bool double_A = false){
   double time_alpha = 0.;
   double time_beta = 0.;
   double time_ksi = 0.;
   double time_update = 0.;
+  double thisloglik;
 
   int n = mypow2(L);
   //int itr = 0;
@@ -573,19 +584,23 @@ void adapted_baum_welch(arma::vec& A_val, arma::vec A_row_ptr, arma::vec A_col_i
 
     arma::vec ksi_sum(mypow2(L-1)*L, arma::fill::zeros);
 
+    *loglik = 0;
+    cout << "Starting obs loop\n";
     //Loop thorugh all of the observation sequences
     for(int i=0; i< total_obs; i++){
+      cout << "Think about obs" << i << "\n";
       arma::mat beta(T, n, arma::fill::zeros);
       arma::mat alpha(T, n, arma::fill::zeros);
       vector<string> o = std::vector<string>(O.begin() + i*(L+1), O.begin() + (i+1)*L + i+1);
       int n_o = n_O[i];
 
       auto t_alpha = std::chrono::high_resolution_clock::now();
-      forward_prob(alpha, A_val, A_row_ptr, A_col_idx, o, n_from, c_from, from, cor_row, n_states, c_states, states);
+      forward_prob(alpha, A_val, A_row_ptr, A_col_idx, o, n_from, c_from, from, cor_row, n_states, c_states, states, &thisloglik);
+      *loglik += n_o * thisloglik;
       auto t_alpha_end = std::chrono::high_resolution_clock::now();
       double alpha_ti = std::chrono::duration<double>(t_alpha_end - t_alpha).count();
       time_alpha += alpha_ti;
-
+      
       auto t_beta = std::chrono::high_resolution_clock::now();
       backward_prob(beta, A_val, A_row_ptr, A_col_idx, o, n_partners, c_partners, partners, n_from, c_from, from, cor_row, n_states, c_states, states);
       auto t_beta_end = std::chrono::high_resolution_clock::now();
@@ -1073,6 +1088,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
   vector<string> data_bw;
 
   double time_itr = 0.;
+  double loglik = 0;
 
   arma::cube mean(L,L,n_boot+1,arma::fill::zeros);
   arma::cube sd(L,L,n_boot+1,arma::fill::zeros);
@@ -1095,7 +1111,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
 
   // *** do, and time, the inference process
   auto t1 = std::chrono::high_resolution_clock::now();
-  adapted_baum_welch(A_val, A_row_ptr, A_col_idx, data_bw, data_count, 1000, itr, pow(10, -3), L, false, false);
+  adapted_baum_welch(A_val, A_row_ptr, A_col_idx, data_bw, data_count, 1000, itr, pow(10, -3), L, &loglik, false, false);
   auto t2 = std::chrono::high_resolution_clock::now();
   double duration_seconds = std::chrono::duration<double>(t2 - t1).count(); //Measure time
   time_itr += duration_seconds/itr;
@@ -1181,7 +1197,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
 
     // *** do, and time, the inference process
     auto t3 = std::chrono::high_resolution_clock::now();
-    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000, itr, pow(10, -3), L, false, false);
+    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000, itr, pow(10, -3), L, &loglik, false, false);
     auto t4 = std::chrono::high_resolution_clock::now();
     double duration_seconds2 = std::chrono::duration<double>(t4 - t3).count(); //Measure time
     time_itr += duration_seconds2/itr;
@@ -1264,7 +1280,8 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
                            Named("transitions") = Lfluxdf,
                            Named("features") = 0,
                            Named("viz") = Lvizcv,
-                           Named("L") = L);
+                           Named("L") = L,
+                           Named("loglik") = loglik);
 
   return Lout;
 
@@ -1276,7 +1293,8 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
 List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, int L, int n_boot, string name, double& time, int rw_boot){
 
   int itr = 0;
-
+  double loglik = 0;
+  
   arma::cube mean(L,L,n_boot+1,arma::fill::zeros);
   arma::cube sd(L,L,n_boot+1,arma::fill::zeros);
 
@@ -1289,7 +1307,7 @@ List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, i
 
   // *** do, and time, the inference process
   auto t1 = std::chrono::high_resolution_clock::now();
-  adapted_baum_welch(A_val, A_row_ptr, A_col_idx, data, data_count, 1000, itr, pow(10, -3), L, false, false);
+  adapted_baum_welch(A_val, A_row_ptr, A_col_idx, data, data_count, 1000, itr, pow(10, -3), L, &loglik, false, false);
   auto t2 = std::chrono::high_resolution_clock::now();
   double duration_seconds = std::chrono::duration<double>(t2 - t1).count(); //Measure time
   time += duration_seconds;
@@ -1364,7 +1382,7 @@ List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, i
 
     // *** do, and time, the inference process
     auto t3 = std::chrono::high_resolution_clock::now();
-    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000,itr, pow(10, -3), L, false, false);
+    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000,itr, pow(10, -3), L, &loglik, false, false);
     auto t4 = std::chrono::high_resolution_clock::now();
     double duration_seconds2 = std::chrono::duration<double>(t4 - t3).count(); //Measure time
     time += duration_seconds2;
@@ -1445,7 +1463,8 @@ List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, i
                            Named("transitions") = Lfluxdf,
                            Named("features") = 0,
                            Named("viz") = Lvizcv,
-                           Named("L") = L);
+                           Named("L") = L,
+                           Named("loglik") = loglik);
 
   return Lout;
 }
