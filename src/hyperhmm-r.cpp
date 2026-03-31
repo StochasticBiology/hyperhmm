@@ -353,7 +353,7 @@ void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::
         int j2 = from[start_idx+j];
         alpha(t, state) += alpha(t-1,cor_row[start_idx+j])*A_val(j2);
       }
-   //   cout << "Reporting " << alpha(t,state) << " for " << state << " at " << t << "\n";
+     // cout << "Reporting " << alpha(t,state) << " for " << state << " at " << t << "\n";
       *loglik = log(alpha(t, state));
       /*
        if(alpha(t,state)==0){
@@ -1087,7 +1087,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
   vector<string> data_bw;
 
   double time_itr = 0.;
-  double loglik = 0;
+  double loglik = 0, tmploglik = 0;
 
   arma::cube mean(L,L,n_boot+1,arma::fill::zeros);
   arma::cube sd(L,L,n_boot+1,arma::fill::zeros);
@@ -1196,7 +1196,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
 
     // *** do, and time, the inference process
     auto t3 = std::chrono::high_resolution_clock::now();
-    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000, itr, pow(10, -3), L, &loglik, false, false);
+    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000, itr, pow(10, -3), L, &tmploglik, false, false);
     auto t4 = std::chrono::high_resolution_clock::now();
     double duration_seconds2 = std::chrono::duration<double>(t4 - t3).count(); //Measure time
     time_itr += duration_seconds2/itr;
@@ -1292,7 +1292,7 @@ List run_inference(vector<string>& data, int L, int n_boot, string name, double&
 List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, int L, int n_boot, string name, double& time, int rw_boot){
 
   int itr = 0;
-  double loglik = 0;
+  double loglik = 0, tmploglik = 0;
   
   arma::cube mean(L,L,n_boot+1,arma::fill::zeros);
   arma::cube sd(L,L,n_boot+1,arma::fill::zeros);
@@ -1381,7 +1381,7 @@ List run_inference_longitudinal(vector<string>& data, vector<int>& data_count, i
 
     // *** do, and time, the inference process
     auto t3 = std::chrono::high_resolution_clock::now();
-    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000,itr, pow(10, -3), L, &loglik, false, false);
+    adapted_baum_welch(A_val, A_row_ptr, A_col_idx, new_data, data_count, 1000,itr, pow(10, -3), L, &tmploglik, false, false);
     auto t4 = std::chrono::high_resolution_clock::now();
     double duration_seconds2 = std::chrono::duration<double>(t4 - t3).count(); //Measure time
     time += duration_seconds2;
