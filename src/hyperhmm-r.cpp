@@ -308,16 +308,15 @@ void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::
   //Add the initial state value
   //alpha(0,0) = 1.;
 
-  cout << "Computing probs for: ";
+/*  cout << "Computing probs for: ";
   for(int i=0; i<T; i++){
     cout << O[i] << " ";
   }
-  cout << "\n";
+  cout << "\n"; */
   
   // CHECK FOR BUGS, uninitialised start_state
   int t_start = 0;
   for(int i=0; i<T-1; i++){
-    cout << O[i] << " ";
     string time_i = O[i];
     // avoid question marks
     if(time_i.length() > T-3){
@@ -354,7 +353,7 @@ void forward_prob(arma::mat& alpha, arma::vec A_val, arma::vec A_row_ptr, arma::
         int j2 = from[start_idx+j];
         alpha(t, state) += alpha(t-1,cor_row[start_idx+j])*A_val(j2);
       }
-      cout << "Reporting " << alpha(t,state) << " for " << state << " at " << t << "\n";
+   //   cout << "Reporting " << alpha(t,state) << " for " << state << " at " << t << "\n";
       *loglik = log(alpha(t, state));
       /*
        if(alpha(t,state)==0){
@@ -585,10 +584,10 @@ void adapted_baum_welch(arma::vec& A_val, arma::vec A_row_ptr, arma::vec A_col_i
     arma::vec ksi_sum(mypow2(L-1)*L, arma::fill::zeros);
 
     *loglik = 0;
-    cout << "Starting obs loop\n";
+  //  cout << "Starting obs loop\n";
     //Loop thorugh all of the observation sequences
     for(int i=0; i< total_obs; i++){
-      cout << "Think about obs" << i << "\n";
+     // cout << "Think about obs" << i << "\n";
       arma::mat beta(T, n, arma::fill::zeros);
       arma::mat alpha(T, n, arma::fill::zeros);
       vector<string> o = std::vector<string>(O.begin() + i*(L+1), O.begin() + (i+1)*L + i+1);
